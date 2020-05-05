@@ -1,0 +1,31 @@
+Run_Player_With_Tests_Android:
+  name: Run Tests with built player Android
+  agent:
+      type: Unity::mobile::shield
+      image: mobile/android-execution-r19:stable
+      flavor: b1.medium
+      
+  # Skip repository cloning
+  skip_checkout: true
+  # Set a dependency on the build job
+  dependencies:
+    - .yamato/buildTestsYamato.yml#Build_Player_With_Tests_Android    
+  commands:
+    - |
+       # Download standalone UnityTestRunner
+       curl -s https://artifactory.internal.unity3d.com/core-automation/tools/utr-standalone/utr.bat --output utr.bat
+       # Set the IP of the device. In case device gets lost, UTR will try to recconect to ANDROID_DEVICE_CONNECTION
+       set ANDROID_DEVICE_CONNECTION=%BOKKEN_DEVICE_IP%
+       # Establish an ADB connection with the device
+       start %ANDROID_SDK_ROOT%\platform-tools\adb.exe connect %BOKKEN_DEVICE_IP%
+       # List the connected devices
+       start %ANDROID_SDK_ROOT%\platform-tools\adb.exe devices
+       ./utr --suite=playmode --platform=android --player-load-path=build/players --artifacts_path=build/test-results --player-connection-ip=%BOKKEN_DEVICE_IP%
+  after:
+    - start %ANDROID_SDK_ROOT%\platform-tools\adb.exe connect %BOKKEN_DEVICE_IP%
+    - powershell %ANDROID_SDK_ROOT%\platform-tools\adb.exe logcat -d > build/test-results/device_log.txt
+  # Set uploadable artifact paths
+  artifacts:
+    logs:
+      paths:
+        - "build/test-results/**"
